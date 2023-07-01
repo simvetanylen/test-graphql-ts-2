@@ -6,7 +6,6 @@ import {Length} from "class-validator";
 
 @ObjectType({ description: 'The User model' })
 export class User {
-    [x: string]: any;
     @Field(() => ID)
     id: String;
 
@@ -26,7 +25,6 @@ export class User {
     @Field()
     @Property({ required: true })
     role: Role;
-    // _doc: any;
 }
 
 export const UserModel = getModelForClass(User);

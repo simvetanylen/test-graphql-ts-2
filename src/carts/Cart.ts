@@ -13,7 +13,6 @@ export class Cart {
 
     @Property({ ref: Product, required: true })
     products: ObjectId[];
-    _doc: any;
 }
 
 export const CartModel = getModelForClass(Cart);

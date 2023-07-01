@@ -13,6 +13,7 @@ export class CartResolver {
         const proj = new CartProjection()
         proj.ownerId = cart.owner.toString()
         proj.id = cart.id
+        proj.productIds = cart.products.map(id => id.toString())
 
         return proj
     }
@@ -27,6 +28,7 @@ export class CartResolver {
         @Ctx() context: Context,
     ) {
         const result = await CartModel.find()
+        console.log('---getAllCarts')
         console.log(result)
         const proj =result.map((cart) => {
             return CartResolver.toProjection(cart)
@@ -69,22 +71,12 @@ export class CartResolver {
     // }
 
     @FieldResolver((_type) => User)
-    async owner(@Root() cart: CartProjection, @Ctx() context: Context,): Promise<User> {
+    async owner(@Root() cart: CartProjection, @Ctx() context: Context,) {
+       return context.dataLoaders.users.load(cart.ownerId)
+    }
 
-        // @ts-ignore
-        if (context.carts) {
-            // @ts-ignore
-            const ownerIds = context["carts"].map(cart => cart.ownerId)
-
-            console.log(ownerIds)
-        }
-
-
-        // console.log(typeof carts)
-        // console.log(Object.getPrototypeOf(carts))
-        // console.log(carts.constructor)
-        // console.log(Object.getPrototypeOf(carts.constructor))
-        // console.log(carts)
-        return (await UserModel.findById(cart.ownerId))!
+    @FieldResolver(_ => [Product])
+    async products(@Root() cart: CartProjection, @Ctx() context: Context) {
+        return context.dataLoaders.products.loadMany(cart.productIds)
     }
 }

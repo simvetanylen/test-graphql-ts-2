@@ -1,58 +1,25 @@
-import { ApolloServer } from '@apollo/server';
-import { expressMiddleware } from '@apollo/server/express4';
+import {ApolloServer} from '@apollo/server';
+import {expressMiddleware} from '@apollo/server/express4';
 import {ApolloServerPluginLandingPageGraphQLPlayground} from "@apollo/server-plugin-landing-page-graphql-playground";
-import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
+import {ApolloServerPluginDrainHttpServer} from '@apollo/server/plugin/drainHttpServer';
 import express from 'express';
 import json from 'body-parser';
 import http from "http";
-import {buildSchema} from "type-graphql";
 import {connect} from "mongoose";
-import {UserResolver} from "./users/UserResolver";
-import {ProductResolver} from "./products/ProductResolver";
 import {CartResolver} from "./carts/CartResolver";
-import sessions, {SessionOptions} from "express-session";
+import sessions from "express-session";
 import cookieParser from "cookie-parser";
 import {Subject} from "./authentication/Subject";
 import {Role} from "./users/Role";
-import {AuthenticationResolver} from "./authentication/AuthenticationResolver";
 import cors from 'cors'
+import {usersDataLoader} from "./users/dataloader";
+import {buildSchema} from "type-graphql";
+import {ProductResolver} from "./products/ProductResolver";
+import {UserResolver} from "./users/UserResolver";
+import {AuthenticationResolver} from "./authentication/AuthenticationResolver";
+import {Context} from "./Context";
+import {productsDataLoader} from "./products/dataloader";
 
-// A schema is a collection of type definitions (hence "typeDefs")
-// that together define the "shape" of queries that are executed against
-// your data.
-const typeDefs = `#graphql
-  # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
-
-  # This "Book" type defines the queryable fields for every book in our data source.
-  type Book {
-    title: String
-    author: String
-  }
-
-  # The "Query" type is special: it lists all of the available queries that
-  # clients can execute, along with the return type for each. In this
-  # case, the "books" query returns an array of zero or more Books (defined above).
-  type Query {
-    books: [Book]
-  }
-`;
-
-const books = [
-    {
-        title: 'The Awakening',
-        author: 'Kate Chopin',
-    },
-    {
-        title: 'City of Glass',
-        author: 'Paul Auster',
-    },
-];
-
-const resolvers = {
-    Query: {
-        books: () => books,
-    },
-};
 
 const main = async () => {
     const schema = await buildSchema({
@@ -83,7 +50,7 @@ const main = async () => {
         includeStacktraceInErrorResponses: true,
         plugins: [
             ApolloServerPluginLandingPageGraphQLPlayground(),
-            ApolloServerPluginDrainHttpServer({ httpServer })
+            ApolloServerPluginDrainHttpServer({httpServer})
         ]
     });
 
@@ -114,7 +81,7 @@ const main = async () => {
     expressApp.use(cookieParser())
 
     expressApp.use('/graphql', json(), expressMiddleware(apolloServer, {
-        context: async ({ req, res }) => {
+        context: async ({req, res}): Promise<Context> => {
             let subject: Subject
             // @ts-ignore
             let session = req.session as {
@@ -137,16 +104,20 @@ const main = async () => {
             return {
                 subject,
                 session: req.session,
+                dataLoaders: {
+                    users: usersDataLoader(),
+                    products: productsDataLoader(),
+                }
             }
         },
     }));
 
-    await new Promise<void>((resolve) => httpServer.listen({ port: 4000 }, resolve));
+    await new Promise<void>((resolve) => httpServer.listen({port: 4000}, resolve));
 
     console.log(`🚀  Server ready at: localhost:4000`);
 }
 
 
-main().catch((err)=> {
+main().catch((err) => {
     console.log(err)
 })
